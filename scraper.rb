@@ -1,5 +1,6 @@
 require "mechanize"
 require "json"
+require "scraperwiki"
 
 def scrape_page(agent, page)
   id = "a71d58ad-4cba-48b6-8dab-f3091fc31cd5"
@@ -61,11 +62,11 @@ def scrape_page(agent, page)
       r["attachment#{i+1}_name"] = record["AttachmentFileName"]
       r["attachment#{i+1}_url"] = (result.uri + record["AttachmentUrl"]).to_s
     end
-    p r
-    # TODO: Save to database
+    ScraperWiki.save_sqlite(%w[reference_number], r)
   end
 end
 
 agent = Mechanize.new
 
+puts "Page 1..."
 scrape_page(agent, 1)
