@@ -15,7 +15,8 @@ def scrape_page(agent, page)
       "page":page,
       "pageSize":30,
       "filter":nil,
-      "metaFilter":nil
+      # Only get last 60 days
+      "metaFilter":"0=&1=&2=&3=2"
     }.to_json,
     "Content-Type" => "application/json; charset=utf-8"
   )
@@ -56,17 +57,26 @@ def scrape_page(agent, page)
       }.to_json,
       "Content-Type" => "application/json; charset=utf-8"
     )
-    data = JSON.parse(result.body)
-
-    data["Records"].each_with_index do |record, i|
+    JSON.parse(result.body)["Records"].each_with_index do |record, i|
       r["attachment#{i+1}_name"] = record["AttachmentFileName"]
       r["attachment#{i+1}_url"] = (result.uri + record["AttachmentUrl"]).to_s
     end
     ScraperWiki.save_sqlite(%w[reference_number], r)
   end
+  # Return total number of pages
+  data["PageCount"]
 end
 
 agent = Mechanize.new
 
-puts "Page 1..."
-scrape_page(agent, 1)
+puts "Getting data for the last 60 days"
+page = 1
+puts "Page #{page}..."
+page_count = scrape_page(agent, page)
+page += 1
+
+while page <= page_count
+  puts "Page #{page}..."
+  page_count = scrape_page(agent, page)
+  page += 1
+end
