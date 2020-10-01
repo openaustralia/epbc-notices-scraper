@@ -14,7 +14,6 @@ a = {
   "filter":nil,
   "metaFilter":nil
 }
-
 v = a.to_json
 
 r = agent.post("http://epbcnotices.environment.gov.au/_services/entity-grid-data.json/a71d58ad-4cba-48b6-8dab-f3091fc31cd5",
@@ -23,15 +22,36 @@ r = agent.post("http://epbcnotices.environment.gov.au/_services/entity-grid-data
 data = JSON.parse(r.body)
 
 data["Records"].each do |record|
-  attributes = record["Attributes"]
+  r = {}
+  record["Attributes"].each do |a|
+    key = case a["Name"]
+    when "new_epbcnumber"
+      "reference_number"
+    when "new_titleforweb"
+      "title"
+    when "new_webdisplayname"
+      "notification_type"
+    when "new_dateofnotice"
+      "date"
+    when "new_casedecisionid"
+      "case_decision_id"
+    else
+      raise "Unexpected name"
+    end
+    r[key] = a["DisplayValue"]
+  end
 
-  r = {
-    "reference_number" => attributes.find{ |a| a["Name"] == "new_epbcnumber" }["DisplayValue"],
-    "title" => attributes.find{ |a| a["Name"] == "new_titleforweb" }["DisplayValue"],
-    "notification_type" => attributes.find{ |a| a["Name"] == "new_webdisplayname" }["DisplayValue"],
-    "date" => attributes.find{ |a| a["Name"] == "new_dateofnotice" }["DisplayValue"],
-    "case_decision_id" => attributes.find{ |a| a["Name"] == "new_casedecisionid" }["DisplayValue"],
-  }
+  # Now get the detail record
+  result = agent.post("http://epbcnotices.environment.gov.au/_services/entity-notes/a71d58ad-4cba-48b6-8dab-f3091fc31cd5",
+                      '{"regarding":{"Id":"1f7257b7-7c03-eb11-9650-005056842ad1","LogicalName":"new_casedecision","Name":null},"orders":[{"Attribute":"createdon","Alias":null,"Direction":null,"Extensions":null}],"page":1,"pageSize":20}',
+                      "Content-Type" => "application/json; charset=utf-8")
+  data = JSON.parse(result.body)
+
+  data["Records"].each_with_index do |record, i|
+    puts record.to_yaml
+    r["attachment#{i+1}_name"] = record["AttachmentFileName"]
+    r["attachment#{i+1}_url"] = (result.uri + record["AttachmentUrl"]).to_s
+  end
   p r
   exit
 end
